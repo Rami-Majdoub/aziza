@@ -20,20 +20,13 @@ jobs:
     - name: Install curl
       run: sudo apt-get update && sudo apt-get install -y curl
 
-    - name: Make script executable
-      run: chmod +x aziza.sh
+    - name: Make scripts executable
+      run: |
+        chmod +x aziza.sh
+        chmod +x commit-push.sh
 
     - name: Run aziza script
       run: bash aziza.sh "$(date +%U-%y)"  # Pass current week-year (e.g., 49-25 for week 49 of 2025) as argument
 
     - name: Commit and push changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add .
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "Auto-update: Downloaded images from Aziza catalog"
-          git push
-        fi
+      run: bash commit-push.sh
