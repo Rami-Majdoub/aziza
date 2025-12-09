@@ -18,7 +18,7 @@ jobs:
       run: chmod +x aziza.sh
 
     - name: Run aziza script
-      run: ./aziza.sh "$(date +%U-%y)"  # Pass current week-year (e.g., 49-25 for week 49 of 2025) as argument
+      run: bash aziza.sh "$(date +%U-%y)"  # Pass current week-year (e.g., 49-25 for week 49 of 2025) as argument
 
     - name: Commit and push changes
       run: |
