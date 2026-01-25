@@ -1,7 +1,7 @@
 #!/bin/bash
 
-folder="$1" # 45-25
-base_url="https://int01.azizacdn.com/catalogues_pdf/$folder/images"
+folder="$1-weekend" # 45-25
+base_url="https://int01.azizacdn.com/catalogues_pdf/weekend"
 mkdir -p "$folder"
 
 i=1
