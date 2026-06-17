@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Aziza Catalog</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #333; font-family: sans-serif; color: #fff; }
+  #catalog { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+  #book { width: 800px; height: 1100px; max-width: 95vw; max-height: 90vh; }
+  #topbar { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 8px; }
+  #bottombar { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; align-items: center; gap: 12px; }
+  #topbar button, #topbar select, #bottombar button, #bottombar span { padding: 6px 10px; background: #222; color: #fff; border: 1px solid #555; cursor: pointer; border-radius: 4px; }
+  #bottombar span { background: transparent; border: none; min-width: 70px; text-align: center; color: #000; }
+  @media (max-width: 768px) {
+    /* keep two-page spread but let width drive sizing so left page stays in view */
+    #book { width: 95vw !important; max-width: 95vw; max-height: 80vh !important; }
+    #topbar button, #topbar select, #bottombar button, #bottombar span { font-size: 20px; padding: 12px 18px; min-height: 44px; }
+    #bottombar { gap: 16px; bottom: 20px; }
+    #topbar { top: 20px; }
+  }
+</style>
+</head>
+<body>
+<div id="topbar">
+  <button id="folderPrev"><</button>
+  <select id="folder"></select>
+  <button id="folderNext">></button>
+</div>
+<div id="catalog"><div id="book"></div></div>
+<div id="bottombar">
+  <button id="first">⏮</button>
+  <button id="prev">‹</button>
+  <span id="pageinfo"></span>
+  <button id="next">›</button>
+  <button id="last">⏭</button>
+</div>
+
+<script src="page-flip.browser.js"></script>
+<script>
+// page count per folder (1.jpg .. N.jpg)
+const PAGES = {
+  "01-26":31,"02-26":28,"03-26":29,"04-26":30,"04-26-weekend":10,"05-26":30,
+  "06-26":31,"07-26":41,"08-26":35,"09-26":36,"10-26":34,"11-26":35,"12-26":28,
+  "13-26":24,"14-26":27,"15-26":33,"16-26":29,"17-26":31,"18-26":28,"19-26":30,
+  "20-26":35,"21-26":36,"22-25":33,"22-26":28,"23-25":32,"23-26":27,"24-25":28,
+  "24-26":27,"25-25":30,"26-25":34,"27-25":29,"28-25":27,"29-25":27,"30-25":28,
+  "31-25":27,"32-25":29,"33-25":35,"34-25":35,"35-25":18,"36-25":29,"37-25":30,
+  "38-25":25,"39-25":26,"40-25":26,"41-25":26,"42-25":32,"43-25":36,"44-25":32,
+  "45-25":24,"46-25":32,"47-25":28,"48-25":34,"49-25":37,"50-25":28,"51-25":38,
+  "52-25":39
+};
+
+// chronological order: -25 first (ascending), then -26; weekend edition follows its base
+function folderKey(f) {
+  const parts = f.split("-");
+  const num = parseInt(parts[0], 10);
+  const weekend = parts.includes("weekend");
+  const yr = parts[1]; // "25" or "26"
+  return [yr, num, weekend ? 1 : 0];
+}
+const FOLDERS = Object.keys(PAGES).sort((a, b) => {
+  const [ya, na, wa] = folderKey(a);
+  const [yb, nb, wb] = folderKey(b);
+  if (ya !== yb) return ya > yb ? -1 : 1;
+  if (na !== nb) return nb - na;
+  return wa - wb;
+});
+
+const folderSel = document.getElementById("folder");
+let pf = null;
+
+// Populate dropdown
+FOLDERS.forEach(f => {
+  const o = document.createElement("option");
+  o.value = f; o.textContent = f;
+  folderSel.appendChild(o);
+});
+folderSel.value = FOLDERS[0];
+
+function buildPages(folder) {
+  const pages = [];
+  const n = PAGES[folder] || 0;
+  for (let i = 1; i <= n; i++) {
+    pages.push({ src: `${folder}/${i}.jpg`, number: i });
+  }
+  return pages;
+}
+
+function render(folder) {
+  if (pf) { pf.destroy(); pf = null; }
+  const catalog = document.getElementById("catalog");
+  catalog.innerHTML = '<div id="book"></div>';
+  const book = document.getElementById("book");
+
+  pf = new St.PageFlip(book, {
+    width: 550,
+    height: 750,
+    size: "stretch",
+    minWidth: 200,
+    maxWidth: 1000,
+    minHeight: 300,
+    maxHeight: 1500,
+    maxShadowOpacity: 0.5,
+    showCover: true,
+    mobileScrollSupport: false,
+    usePortrait: false
+  });
+
+  const total = PAGES[folder] || 0;
+  pf.loadFromImages(buildPages(folder).map(p => p.src));
+  pf.on("flip", (e) => {
+    const cur = e.data + 1;
+    document.getElementById("pageinfo").textContent = `${cur} / ${total}`;
+  });
+  document.getElementById("pageinfo").textContent = `1 / ${total}`;
+}
+
+folderSel.addEventListener("change", () => render(folderSel.value));
+document.getElementById("prev").addEventListener("click", () => pf.flipPrev());
+document.getElementById("next").addEventListener("click", () => pf.flipNext());
+document.getElementById("first").addEventListener("click", () => pf.flip(0));
+document.getElementById("last").addEventListener("click", () => {
+  const total = PAGES[folderSel.value] || 0;
+  pf.flip(total - 1);
+});
+
+// folder (week) navigation
+function shiftFolder(delta) {
+  const i = FOLDERS.indexOf(folderSel.value);
+  const next = FOLDERS[Math.min(FOLDERS.length - 1, Math.max(0, i + delta))];
+  if (next !== folderSel.value) { folderSel.value = next; render(next); }
+}
+document.getElementById("folderPrev").addEventListener("click", () => shiftFolder(1));
+document.getElementById("folderNext").addEventListener("click", () => shiftFolder(-1));
+
+document.addEventListener("keydown", (e) => {
+  if (!pf) return;
+  if (e.key === "ArrowLeft") pf.flipPrev();
+  if (e.key === "ArrowRight") pf.flipNext();
+});
+
+render(FOLDERS[0]);
+</script>
+</body>
+</html>
